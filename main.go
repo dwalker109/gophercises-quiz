@@ -10,42 +10,33 @@ import (
 	"strconv"
 )
 
+type problem struct {
+	q string
+	a int
+}
+
 func main() {
 	filename := flag.String("csv", "questions.csv", "Input filename")
 	flag.Parse()
 
 	file := openFile(filename)
 	csv := openCsv(file)
-	records := getRecords(csv)
-
-	extract := func(record []string) (string, string) {
-		return record[0], record[1]
-	}
+	problems := getProblems(csv)
 
 	scanner := bufio.NewScanner(os.Stdin)
 	correct := 0
 
-	for _, record := range records {
-		csvQ, csvA := extract(record)
-
-		fmt.Printf("Q: %s? ", csvQ)
+	for _, problem := range problems {
+		fmt.Printf("Q: %s? ", problem.q)
 		scanner.Scan()
-		inputA := scanner.Text()
+		input, _ := strconv.Atoi(scanner.Text())
 
-		intCsvA, _ := strconv.Atoi(csvA)
-		intInputA, _ := strconv.Atoi(inputA)
-
-		if intCsvA == intInputA {
+		if input == problem.a {
 			correct++
 		}
 	}
 
-	fmt.Printf("Correct: %d of %d", correct, len(records))
-}
-
-struct problem {
-	q: string
-	a: string
+	fmt.Printf("Correct: %d of %d", correct, len(problems))
 }
 
 func openFile(filename *string) *os.File {
@@ -59,11 +50,26 @@ func openCsv(file *os.File) *csv.Reader {
 	return csv.NewReader(file)
 }
 
-func getRecords(csv *csv.Reader) [][]string {
+func getProblems(csv *csv.Reader) []*problem {
 	records, err := csv.ReadAll()
 	bailOnError(err)
 
-	return records
+	extract := func(record []string) (string, int) {
+		q, a := record[0], record[1]
+		numericA, _ := strconv.Atoi(a)
+		return q, numericA
+	}
+
+	problems := make([]*problem, len(records))
+	for i, record := range records {
+		q, a := extract(record)
+		problems[i] = &problem{
+			q: q,
+			a: a,
+		}
+	}
+
+	return problems
 }
 
 func bailOnError(err error) {
