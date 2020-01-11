@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -19,11 +20,12 @@ type problem struct {
 func main() {
 	filename := flag.String("csv", "questions.csv", "Input filename")
 	timeLimit := flag.String("time", "30", "Time limit (in seconds)")
+	shuffle := flag.Bool("shuffle", false, "Shuffle the order of quiz questions")
 	flag.Parse()
 
 	file := openFile(filename)
 	csv := openCsv(file)
-	problems := getProblems(csv)
+	problems := getProblems(csv, *shuffle)
 
 	scanner := bufio.NewScanner(os.Stdin)
 	correct := 0
@@ -65,7 +67,7 @@ func openCsv(file *os.File) *csv.Reader {
 	return csv.NewReader(file)
 }
 
-func getProblems(csv *csv.Reader) []*problem {
+func getProblems(csv *csv.Reader, shuffle bool) []*problem {
 	records, err := csv.ReadAll()
 	bailOnError(err)
 
@@ -75,10 +77,23 @@ func getProblems(csv *csv.Reader) []*problem {
 		return q, numericA
 	}
 
+	idx := func() []int {
+		if shuffle {
+			rand.Seed(time.Now().UnixNano())
+			return rand.Perm(len(records))
+		}
+
+		idx := make([]int, len(records))
+		for i := 0; i < len(records); i++ {
+			idx[i] = i
+		}
+		return idx
+	}()
+
 	problems := make([]*problem, len(records))
 	for i, record := range records {
 		q, a := extract(record)
-		problems[i] = &problem{
+		problems[idx[i]] = &problem{
 			q: q,
 			a: a,
 		}
