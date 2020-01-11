@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
 
 type problem struct {
@@ -17,6 +18,7 @@ type problem struct {
 
 func main() {
 	filename := flag.String("csv", "questions.csv", "Input filename")
+	timeLimit := flag.String("time", "30", "Time limit (in seconds)")
 	flag.Parse()
 
 	file := openFile(filename)
@@ -26,14 +28,27 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	correct := 0
 
-	for _, problem := range problems {
-		fmt.Printf("Q: %s? ", problem.q)
-		scanner.Scan()
-		input, _ := strconv.Atoi(scanner.Text())
+	qc := make(chan bool)
+	go func() {
+		for _, problem := range problems {
+			fmt.Printf("Q: %s? ", problem.q)
+			scanner.Scan()
+			input, _ := strconv.Atoi(scanner.Text())
 
-		if input == problem.a {
-			correct++
+			if input == problem.a {
+				correct++
+			}
 		}
+		qc <- true
+	}()
+
+	timeout, _ := strconv.Atoi(*timeLimit)
+
+	select {
+	case <-qc:
+		fmt.Println("Completed!")
+	case <-time.After(time.Duration(timeout) * time.Second):
+		fmt.Println("Out of time...")
 	}
 
 	fmt.Printf("Correct: %d of %d", correct, len(problems))
